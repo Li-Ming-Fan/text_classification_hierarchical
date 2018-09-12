@@ -9,7 +9,7 @@ Created on Sat Aug 25 15:33:42 2018
 import tensorflow as tf
 
 from zoo_layers import rnn_layer
-from zoo_layers import att_pool_layer
+# from zoo_layers import att_pool_layer
 from zoo_layers import gather_and_pad_layer
 
 
@@ -38,6 +38,7 @@ def build_graph(config):
         #
         feat_g, mask_s = gather_and_pad_layer(feat_s, input_n)
         
+        #
         seq_e = rnn_layer(feat_g, input_n, 128, config.keep_prob,
                           activation = tf.nn.relu, concat = True, scope = 'bi-lstm-2')        
         feat = seq_e[:,-1,:]

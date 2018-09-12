@@ -34,13 +34,16 @@ def build_graph(config):
         conv1_3 = tf.layers.conv1d(seq_emb, 128, 3, padding='same', name='conv1_3')
         conv1_2 = tf.layers.conv1d(seq_emb, 128, 2, padding='same', name='conv1_2')
         
-        emb_d = tf.concat([conv1_5, conv1_3, conv1_2, seq_emb], -1)
-        emb_d = tf.layers.dense(emb_d, 256, name = 'emb_d')        
-        feat_m = tf.reduce_max(emb_d, reduction_indices=[1], name='feat_m')
+        feat1 = tf.reduce_max(conv1_5, reduction_indices=[1], name='feat1')
+        feat2 = tf.reduce_max(conv1_3, reduction_indices=[1], name='feat2')
+        feat3 = tf.reduce_max(conv1_2, reduction_indices=[1], name='feat3')
+        
+        feat_s = tf.concat([feat1, feat2, feat3], 1)
         
         #
-        feat_g, mask_s = gather_and_pad_layer(feat_m, input_n)  # (B, S, D)
+        feat_g, mask_s = gather_and_pad_layer(feat_s, input_n)  # (B, S, D)
         
+        #
         B = tf.shape(feat_g)[0]
         num_heads = 2
         att_dim = 128

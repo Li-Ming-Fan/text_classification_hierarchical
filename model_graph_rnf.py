@@ -78,11 +78,11 @@ def build_graph(config):
 
     with tf.name_scope("cnn"):
         #
-        conv1_5 = tf.layers.conv1d(seq_emb, 128, 5, padding='same', name='conv1_5')
+        # conv1_5 = tf.layers.conv1d(seq_emb, 128, 5, padding='same', name='conv1_5')
         conv1_3 = tf.layers.conv1d(seq_emb, 128, 3, padding='same', name='conv1_3')
         conv1_2 = tf.layers.conv1d(seq_emb, 128, 2, padding='same', name='conv1_2')
         
-        feat1 = tf.reduce_max(conv1_5, reduction_indices=[1], name='feat1')
+        # feat1 = tf.reduce_max(conv1_5, reduction_indices=[1], name='feat1')
         feat2 = tf.reduce_max(conv1_3, reduction_indices=[1], name='feat2')
         feat3 = tf.reduce_max(conv1_2, reduction_indices=[1], name='feat3')
         
@@ -90,13 +90,16 @@ def build_graph(config):
         crnf_5 = cnn_rnf_layer(seq_emb, seq_len, 5, 128, padding='valid', scope='cnn_rnf')
         feat_r = tf.reduce_max(crnf_5, 1)
         
-        feat_s = tf.concat([feat1, feat2, feat3, feat_r], 1)
-        feat_s = tf.layers.dense(feat_s, 256, name = 'feat_s')
+        feat_s = tf.concat([feat2, feat3, feat_r], 1)
+        # feat_s = tf.layers.dense(feat_s, 256, name = 'feat_s')
         
         #
         feat_g, mask_s = gather_and_pad_layer(feat_s, input_n)  # (B, S, D)
         
-        # feat = tf.reduce_max(feat_g, 1)  # simple
+        #
+        feat = tf.reduce_max(feat_g, 1)  # simple
+        #
+        '''
         B = tf.shape(feat_g)[0]
         num_heads = 2
         att_dim = 128
@@ -117,6 +120,7 @@ def build_graph(config):
             feat.append(feat_c)
         #            
         feat = tf.concat(feat, 1)
+        '''
         #
 
     with tf.name_scope("score"):

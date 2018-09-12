@@ -46,6 +46,7 @@ def build_graph(config):
         #
         feat_g, mask_s = gather_and_pad_layer(feat_s, input_n)
         
+        #
         seq_e = rnn_layer(feat_g, input_n, 128, config.keep_prob,
                           activation = tf.nn.relu, concat = True, scope = 'bi-lstm-2')
         B = tf.shape(seq_e)[0]

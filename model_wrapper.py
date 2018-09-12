@@ -319,15 +319,16 @@ class ModelWrapper(ModelSettings):
                     if self.use_metric:
                         metric = self._sess.run(self._metric_tensor, feed_dict = feed_dict)
                     #
+                    self._log_info("")
+                    # print()
                     str_info = "epoch: %d" % (epoch + 1)
                     self._log_info(str_info)
                     # print(str_info)
                     #
                     str_info = "loss, metric of train: %f, %f" % (loss, metric)
-                    self._log_info(str_info)
-                    self._log_info("")
+                    self._log_info(str_info)                    
                     # print(str_info)
-                    # print()
+                    #                    
                     
                     self._saver.save(self._sess,
                                     os.path.join(self.model_dir, self.model_name),

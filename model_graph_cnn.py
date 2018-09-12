@@ -8,7 +8,7 @@ Created on Sat Aug 25 13:49:51 2018
 
 import tensorflow as tf
 
-from zoo_layers import att_pool_layer, dot_att_layer
+# from zoo_layers import att_pool_layer, dot_att_layer
 from zoo_layers import gather_and_pad_layer
 
 
@@ -31,21 +31,16 @@ def build_graph(config):
         conv1_3 = tf.layers.conv1d(seq_emb, 128, 3, padding='same', name='conv1_3')
         conv1_2 = tf.layers.conv1d(seq_emb, 128, 2, padding='same', name='conv1_2')
         
-        conv1 = tf.concat([conv1_5, conv1_3, conv1_2], -1)
-        
-        conv2_5 = tf.layers.conv1d(conv1, 128, 5, name='conv2_5')
-        conv2_3 = tf.layers.conv1d(conv1, 128, 3, name='conv2_3')
-        conv2_2 = tf.layers.conv1d(conv1, 128, 2, name='conv2_2')
-        
-        feat1 = tf.reduce_max(conv2_5, reduction_indices=[1], name='feat1')
-        feat2 = tf.reduce_max(conv2_3, reduction_indices=[1], name='feat2')
-        feat3 = tf.reduce_max(conv2_2, reduction_indices=[1], name='feat3')
+        feat1 = tf.reduce_max(conv1_5, reduction_indices=[1], name='feat1')
+        feat2 = tf.reduce_max(conv1_3, reduction_indices=[1], name='feat2')
+        feat3 = tf.reduce_max(conv1_2, reduction_indices=[1], name='feat3')
         
         feat_s = tf.concat([feat1, feat2, feat3], 1)
         
         #
         feat_g, mask_s = gather_and_pad_layer(feat_s, input_n)  # (B, S, D)
         
+        # could be more complex        
         feat = tf.reduce_max(feat_g, 1)  # simple
         
 
