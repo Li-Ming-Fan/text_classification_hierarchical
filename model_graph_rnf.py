@@ -79,15 +79,15 @@ def build_graph(config):
     with tf.name_scope("cnn"):
         #
         # conv1_5 = tf.layers.conv1d(seq_emb, 128, 5, padding='same', name='conv1_5')
-        conv1_3 = tf.layers.conv1d(seq_emb, 128, 3, padding='same', name='conv1_3')
-        conv1_2 = tf.layers.conv1d(seq_emb, 128, 2, padding='same', name='conv1_2')
+        conv1_3 = tf.layers.conv1d(seq_emb, config.hidden_units, 3, padding='same', name='conv1_3')
+        conv1_2 = tf.layers.conv1d(seq_emb, config.hidden_units, 2, padding='same', name='conv1_2')
         
         # feat1 = tf.reduce_max(conv1_5, reduction_indices=[1], name='feat1')
         feat2 = tf.reduce_max(conv1_3, reduction_indices=[1], name='feat2')
         feat3 = tf.reduce_max(conv1_2, reduction_indices=[1], name='feat3')
         
         #
-        crnf_5 = cnn_rnf_layer(seq_emb, seq_len, 5, 128, padding='valid', scope='cnn_rnf')
+        crnf_5 = cnn_rnf_layer(seq_emb, seq_len, 5, config.hidden_units, padding='valid', scope='cnn_rnf')
         feat_r = tf.reduce_max(crnf_5, 1)
         
         feat_s = tf.concat([feat2, feat3, feat_r], 1)
@@ -126,7 +126,7 @@ def build_graph(config):
     with tf.name_scope("score"):
         #
         fc = tf.nn.dropout(feat, config.keep_prob)
-        fc = tf.layers.dense(fc, 128, name='fc1')            
+        fc = tf.layers.dense(fc, config.hidden_units, name='fc1')            
         fc = tf.nn.relu(fc)
         
         fc = tf.nn.dropout(fc, config.keep_prob)

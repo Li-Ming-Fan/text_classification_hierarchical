@@ -87,7 +87,7 @@ def att_pool_layer(seq, query, seq_mask, att_dim,
         T = seq_shape[1]
         D = seq_shape[2]
         with tf.variable_scope("attention"):
-            d_seq = tf.nn.relu(dense(d_seq, att_dim, use_bias=False, scope="att_dense"))
+            d_seq = tf.nn.tanh(dense(d_seq, att_dim, scope="att_dense"))
             #
             q_tile = tf.tile(tf.expand_dims(query, 1), [1, T, 1])  # [B, T, DQ]
             att_value = tf.reduce_sum(tf.multiply(d_seq, q_tile), 2)  # [B, T]
@@ -113,9 +113,6 @@ def rnn_layer(input_sequence, sequence_length, rnn_size,
     if keep_prob < 1.0:
         input_sequence = dropout(input_sequence, keep_prob)
     #
-    # to time_major from batch_major
-    input_sequence = tf.transpose(input_sequence, [1,0,2])
-    #
     weight_initializer = tf.truncated_normal_initializer(stddev = 0.01)
     act = activation or tf.nn.tanh
     #
@@ -132,7 +129,7 @@ def rnn_layer(input_sequence, sequence_length, rnn_size,
     #
     rnn_output, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input_sequence,
                                                     sequence_length = sequence_length,
-                                                    time_major = True,
+                                                    time_major = False,
                                                     dtype = tf.float32,
                                                     scope = scope)
     #
@@ -140,9 +137,6 @@ def rnn_layer(input_sequence, sequence_length, rnn_size,
         rnn_output = tf.concat(rnn_output, 2, name = 'output')
     else:
         rnn_output = tf.multiply(tf.add(rnn_output[0], rnn_output[1]), 0.5, name = 'output')
-    #
-    # to batch_major from time_major
-    rnn_output = tf.transpose(rnn_output, [1,0,2])
     #
     return rnn_output
     #        
@@ -152,7 +146,7 @@ def gather_and_pad_layer(x, num_items):
     """ x: (BS', D)
         num_items : (B,)
         
-        returning: (B, S, D)
+        returning: (B, S, D), (B, S)
     """
     B = tf.shape(num_items)[0]
     T = tf.reduce_max(num_items)

@@ -13,10 +13,11 @@ class ModelSettings(object):
     def __init__(self, vocab = None, is_train = None):
 
         # model macro
-        self.max_num_sent = 10
+        self.max_num_sent = 30
         self.min_seq_len = 5
         self.max_seq_len = 100
-        self.att_dim = 256
+        self.hidden_units = 64
+        self.att_dim = 64        
         #
         self.num_classes = 10
         

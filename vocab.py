@@ -82,8 +82,12 @@ class Vocab(object):
             with one token in one line
         """
         for line in open(file_path, 'r', encoding='utf-8'):
-            token = line.rstrip('\n')
+            if line.startswith(' '):
+                self.add(' ')
+                continue
+            token = line.strip().split(' ')[0]
             self.add(token)
+            #
             
     def save_tokens_to_file(self, file_path):
         """ save tokens to file
@@ -98,9 +102,8 @@ class Vocab(object):
         #
         self.emb_dim = emb_dim
         self.embeddings = np.random.rand(self.size(), emb_dim)
-        #for token in [self.pad_token, self.unk_token]:
-        for token in [self.pad_token]:
-            self.embeddings[self.get_id(token)] = np.zeros([self.emb_dim])
+        # for token in [self.pad_token, self.unk_token]:
+        # for token in [self.pad_token]: self.embeddings[self.get_id(token)] = np.zeros([self.emb_dim])
 
     def load_pretrained_embeddings(self, embedding_path):
         #
@@ -108,15 +111,16 @@ class Vocab(object):
         with open(embedding_path, 'r', encoding='utf-8') as fin:
             for line in fin:
                 contents = line.strip().split()
-                token = contents[0] #.decode('utf8')
                 #
+                if line.startswith(' '):
+                    trained_embeddings[' '] = list(map(float, contents[0:]))
+                    continue
+                #
+                token = contents[0] #.decode('utf8')
                 if token not in self.token2id: continue  # only existing tokens
                 #
-                try:
-                    trained_embeddings[token] = list(map(float, contents[1:]))
-                except BaseException:
-                    print(contents)
-                    continue
+                trained_embeddings[token] = list(map(float, contents[1:]))
+                #
         #
         trained_tokens = list(trained_embeddings.keys() )
         #if self.emb_dim is None:
@@ -125,10 +129,12 @@ class Vocab(object):
         # rebuild the token x id map
         #
         # load embeddings
-        self.embeddings = np.zeros([self.size(), self.emb_dim])
+        self.embeddings = np.random.rand(self.size(), self.emb_dim)
+        # self.embeddings = np.zeros([self.size(), self.emb_dim])
         for token in self.token2id.keys():
             if token in trained_embeddings:
                 self.embeddings[self.get_id(token)] = trained_embeddings[token]
+            #
                 
     def save_embeddings_to_file(self, embedding_path):
         """ save embeddings
@@ -159,5 +165,40 @@ class Vocab(object):
                 break
         return tokens
         
-        
+#
+if __name__ == "__main__":
+    
+    vocab = Vocab()
+    
+    print('loading tokens ...')
+    file_path = './vocab/vocab_tokens.txt'    
+    vocab.load_tokens_from_file(file_path)
+    
+    print(vocab.size())
+    
+    print(vocab.id2token[8])
+    print(len(vocab.id2token[8]))
+    
+    print(vocab.id2token[9])
+    print(len(vocab.id2token[9]))
+    
+    print(vocab.id2token[10])
+    print(len(vocab.id2token[10]))
+    
+    print(vocab.id2token[454])
+    print(len(vocab.id2token[454]))
+    
+    print(vocab.id2token[455])
+    print(len(vocab.id2token[455]))
+    
+    print(vocab.id2token[456])
+    print(len(vocab.id2token[456]))
+    
+    
+    print('loading emb ...')
+    file_path = './vocab/vocab_emb.txt'    
+    vocab.load_pretrained_embeddings(file_path)
+    
+    print(vocab.size())
+
         

@@ -7,13 +7,12 @@
 # import xlrd
 
 import os
-import pickle
 import numpy as np
 
 # import random
 # random.shuffle(list_ori, random.seed(10))
 
-import jieba
+import data_utils
 
 from vocab import Vocab
 
@@ -21,55 +20,15 @@ from vocab import Vocab
 """
 multi-sentences-level nlp tasks
 
-"""
+for prediction,
+for vocab,
+for data_preprocessed,
 
-    
-def segment_sentences(text, delimiters = None):
-    """ 不考虑引用(“ ”)中有句子的情况
-    """
-    if delimiters is None:
-        delimiters = ['?', '!', ';', '？', '！', '。', '；', '…', '\n']
-    #
-    text = text.replace('...', '。。。').replace('..', '。。')
-    #
-    len_text = len(text)
-    
-    sep_posi = []
-    for item in delimiters:
-        posi_start = 0
-        while posi_start < len_text:
-            try:
-                posi = posi_start + text[posi_start:].index(item)
-                sep_posi.append(posi)
-                posi_start = posi + 1               
-            except BaseException:
-                break # while
-        #
-    #
-    sep_posi.sort()
-    num_sep = len(sep_posi)
-    #
-    
-    #
-    list_sent = []
-    #
-    if num_sep == 0: return [ text ]
-    #
-    posi_last = 0
-    for idx in range(0, num_sep - 1):
-        posi_curr = sep_posi[idx] + 1
-        posi_next = sep_posi[idx + 1]
-        if posi_next > posi_curr:
-            list_sent.append( text[posi_last:posi_curr] )
-            posi_last = posi_curr
-    #
-    posi_curr = sep_posi[-1] + 1
-    if posi_curr == len_text:
-        list_sent.append( text[posi_last:] )
-    else:
-        list_sent.extend( [text[posi_last:posi_curr], text[posi_curr:]] )
-    #
-    return list_sent
+for split,
+for batching, standardizing,
+
+
+"""
 
 
 class Dataset():
@@ -125,96 +84,46 @@ class Dataset():
         """
         vocab = settings.vocab
         
-        data_seg = Dataset.clean_and_seg_data_raw(data_raw)
-        data_converted = Dataset.convert_data_seg_to_idx(vocab, data_seg)
+        data_seg = data_utils.clean_and_seg_data_raw(data_raw)
+        data_converted = data_utils.convert_data_seg_to_idx(vocab, data_seg)
         data_s, num_s = Dataset.do_standardizing_examples(data_converted, settings)              
                 
         return (data_s, num_s)
     
-    # executive functions
-    @staticmethod
-    def clean_and_seg_data_raw(data_raw):
-        """ data_raw: (D,)
-            data_seg: (D, S, T)
-        """
-        data_seg = []
-        for text in data_raw:
-            text = text.strip()
-            sent_list = segment_sentences(text)
-            #
-            text_seg = []
-            for sent in sent_list:
-                seg_list = jieba.cut(sent, cut_all = False)
-                tokens = list(seg_list)
-                #
-                #print(text)
-                #tokens = list(text)   # cut chars
-                #
-                text_seg.append( tokens )
-            #
-            data_seg.append(text_seg)
-        return data_seg
-    
-    @staticmethod
-    def convert_data_seg_to_idx(vocab, data_seg):
-        data_converted = []
-        for text in data_seg:
-            text_idx = []
-            for sent in text:
-                ids = vocab.convert_tokens_to_ids(sent)
-                text_idx.append(ids)
-            #
-            data_converted.append(text_idx)
-        return data_converted
-        
-    @staticmethod
-    def convert_labels_to_idx(labels_map, labels):
-        
-        labels_idx = []
-        for item in labels:
-            if item in labels_map:
-                idx = labels_map[item]
-            else:
-                idx = len(labels_map)
-                labels_map[item] = idx
-            labels_idx.append(idx)
-
-        return labels_map, labels_idx
-    
     #
     # vocab
     def build_vocab_tokens_and_emb(self):
-        """ dataset data_seg
+        """ from dataset data_seg
         """
         print('build vocab tokens and emb ...')
-        
-        if not os.path.exists(self.dir_vocab): os.mkdir(self.dir_vocab)        
         self.vocab = Vocab()
         
-        # data_seg
+        # data_seg, task-related
         for text in self.data_seg_train:
             self.vocab.load_tokens_from_corpus(text)  # data_seg
         for text in self.data_seg_valid:
             self.vocab.load_tokens_from_corpus(text)
         for text in self.data_seg_test:
             self.vocab.load_tokens_from_corpus(text)
-        
-        # save
+            
+        # build, task-independent
         self.vocab.filter_tokens_by_cnt(self.vocab_filter_cnt)
-        self.vocab.save_tokens_to_file(os.path.join(self.dir_vocab, 'vocab_tokens.txt'))
         #
         if self.pretrained_emb_file:
             self.vocab.load_pretrained_embeddings(self.pretrained_emb_file)             
         else:
             self.vocab.randomly_init_embeddings(self.emb_dim)
-        self.vocab.save_embeddings_to_file(os.path.join(self.dir_vocab, 'vocab_emb.txt'))
         
-    #
+        # save, task-independent
+        self.save_vocab_tokens_and_emb()
+        #
+        
+    # task-independent
     def load_vocab_tokens_and_emb(self, file_tokens = None, file_emb = None):
         """
         """
         print('load vocab tokens and emb ...')
-        
+        #        
         if file_tokens is None:
             file_tokens = os.path.join(self.dir_vocab, 'vocab_tokens.txt')
         if file_emb is None:
@@ -224,62 +133,46 @@ class Dataset():
         self.vocab.load_tokens_from_file(file_tokens)
         self.vocab.load_pretrained_embeddings(file_emb)
         
-    #        
-    # train and valid
-    def _load_from_file_raw(self, file_raw):
-        
-        with open(file_raw, 'r', encoding = 'utf-8') as fp:
-            lines = fp.readlines()
-        
-        labels_raw = []
-        texts_raw = []
-        for line in lines:
-            if line.strip() != '':
-
-                label = line[0:2]
-                body = line[3:].strip()
-                
-                labels_raw.append(label)
-                texts_raw.append(body)
-        #
-        return texts_raw, labels_raw        
-
-        
+    def save_vocab_tokens_and_emb(self, file_tokens = None, file_emb = None):
         """
-        text_raw = []
-        with open(file_raw, 'r', encoding = 'utf-8') as fp:
-            lines = fp.readlines()
-            for line in lines:
-                if line.strip() != '':
-                    text_raw.append(line)
-        #
-        return text_raw
-        
-        #
-        work_book = xlrd.open_workbook(file_raw)
-        data_sheet = work_book.sheets()[0]
-        queries = data_sheet.col_values(0)
-        labels = data_sheet.col_values(2)
-        return queries, labels
         """
+        print('save vocab tokens and emb ...')
+        #        
+        if file_tokens is None:
+            file_tokens = os.path.join(self.dir_vocab, 'vocab_tokens.txt')
+        if file_emb is None:
+            file_emb = os.path.join(self.dir_vocab, 'vocab_emb.txt')
+        # 
+        if not os.path.exists(self.dir_vocab): os.mkdir(self.dir_vocab)
+        #
+        self.vocab.save_tokens_to_file(os.path.join(self.dir_vocab, 'vocab_tokens.txt'))
+        self.vocab.save_embeddings_to_file(os.path.join(self.dir_vocab, 'vocab_emb.txt'))
     
     #
-    def prepare_processed_data(self, load_vocab):
+    # data, task-related,
+    #
+    def load_data_raw(self):
+        
+        print('load data_raw ...')
+        self.data_raw_train, self.labels_raw_train = data_utils.load_from_file_raw(self.file_train)
+        self.data_raw_valid, self.labels_raw_valid = data_utils.load_from_file_raw(self.file_valid)
+        self.data_raw_test, self.labels_raw_test = data_utils.load_from_file_raw(self.file_test)
+    
+    #
+    def prepare_preprocessed_data(self, load_vocab):
         """ prepare data to train and test
         """
         
-        # load and seg
-        print('load data_raw ...')
-        self.data_raw_train, self.labels_raw_train = self._load_from_file_raw(self.file_train)
-        self.data_raw_valid, self.labels_raw_valid = self._load_from_file_raw(self.file_valid)
-        self.data_raw_test, self.labels_raw_test = self._load_from_file_raw(self.file_test)
-
+        # load
+        self.load_data_raw()
+        
+        # cleanse and seg
         print('cleanse and seg ...')        
-        self.data_seg_train = Dataset.clean_and_seg_data_raw(self.data_raw_train)
-        self.data_seg_valid = Dataset.clean_and_seg_data_raw(self.data_raw_valid)
-        self.data_seg_test = Dataset.clean_and_seg_data_raw(self.data_raw_test)
+        self.data_seg_train = data_utils.clean_and_seg_data_raw(self.data_raw_train)
+        self.data_seg_valid = data_utils.clean_and_seg_data_raw(self.data_raw_valid)
+        self.data_seg_test = data_utils.clean_and_seg_data_raw(self.data_raw_test)
 
-        #
+        # vocab
         print('load or build vocab ...')
         if load_vocab:
             self.load_vocab_tokens_and_emb()
@@ -289,14 +182,14 @@ class Dataset():
         
         # convert
         print('convert to ids ...')
-        self.data_idx_train = Dataset.convert_data_seg_to_idx(self.vocab, self.data_seg_train)
-        self.data_idx_valid = Dataset.convert_data_seg_to_idx(self.vocab, self.data_seg_valid)
-        self.data_idx_test = Dataset.convert_data_seg_to_idx(self.vocab, self.data_seg_test)
+        self.data_idx_train = data_utils.convert_data_seg_to_idx(self.vocab, self.data_seg_train)
+        self.data_idx_valid = data_utils.convert_data_seg_to_idx(self.vocab, self.data_seg_valid)
+        self.data_idx_test = data_utils.convert_data_seg_to_idx(self.vocab, self.data_seg_test)
         
         l_map = {}
-        l_map, self.labels_idx_train = Dataset.convert_labels_to_idx(l_map, self.labels_raw_train)
-        l_map, self.labels_idx_valid = Dataset.convert_labels_to_idx(l_map, self.labels_raw_valid)
-        l_map, self.labels_idx_test = Dataset.convert_labels_to_idx(l_map, self.labels_raw_test)
+        l_map, self.labels_idx_train = data_utils.convert_labels_to_idx(l_map, self.labels_raw_train)
+        l_map, self.labels_idx_valid = data_utils.convert_labels_to_idx(l_map, self.labels_raw_valid)
+        l_map, self.labels_idx_test = data_utils.convert_labels_to_idx(l_map, self.labels_raw_test)
         
         for key in l_map:
             self.labels_map[l_map[key]] = key
@@ -306,62 +199,48 @@ class Dataset():
         
         #
         print('save data converted ...')
-        self._save_data_converted()
-        
-        print('preparation done.')
-        
-    def load_processed_data(self):
-        """
-        """
-        print('load processed data ...')
-        self.load_vocab_tokens_and_emb()
-        self._load_data_converted()
-        
-    #
-    def _save_data_converted(self):
-    
-        if not os.path.exists(self.dir_data_converted): os.makedirs(self.dir_data_converted)
+        if not os.path.exists(self.dir_data_converted): os.mkdir(self.dir_data_converted)
         
         data = (self.data_idx_train, self.labels_idx_train)
         file_path = os.path.join(self.dir_data_converted, 'data_train.pkl')
-        with open(file_path, 'wb') as fp:
-            pickle.dump(data, fp)
+        data_utils.save_data_to_pkl(data, file_path)
         
         data = (self.data_idx_valid, self.labels_idx_valid)
         file_path = os.path.join(self.dir_data_converted, 'data_valid.pkl')
-        with open(file_path, 'wb') as fp:
-            pickle.dump(data, fp)
+        data_utils.save_data_to_pkl(data, file_path)
             
         data = (self.data_idx_test, self.labels_idx_test)
         file_path = os.path.join(self.dir_data_converted, 'data_test.pkl')
-        with open(file_path, 'wb') as fp:
-            pickle.dump(data, fp)
+        data_utils.save_data_to_pkl(data, file_path)
         
         import json
         file_path = os.path.join(self.dir_data_converted, 'labels_map.json')
         with open(file_path, 'w') as fp:
             json.dump(self.labels_map, fp, ensure_ascii = False)
-
         
-    def _load_data_converted(self):
+        print('preparation done.')
         
+    def load_preprocessed_data(self):
+        """
+        """
+        self.load_vocab_tokens_and_emb()
+        #
+        print('load preprocessed data ...')
+        #
         file_path = os.path.join(self.dir_data_converted, 'data_train.pkl')
-        with open(file_path, 'rb') as fp:
-            self.data_idx_train, self.labels_idx_train = pickle.load(fp)
+        self.data_idx_train, self.labels_idx_train = data_utils.load_data_from_pkl(file_path)
             
         file_path = os.path.join(self.dir_data_converted, 'data_valid.pkl')
-        with open(file_path, 'rb') as fp:
-            self.data_idx_valid, self.labels_idx_valid = pickle.load(fp)
+        self.data_idx_valid, self.labels_idx_valid = data_utils.load_data_from_pkl(file_path)
             
         file_path = os.path.join(self.dir_data_converted, 'data_test.pkl')
-        with open(file_path, 'rb') as fp:
-            self.data_idx_test, self.labels_idx_test = pickle.load(fp)
+        self.data_idx_test, self.labels_idx_test = data_utils.load_data_from_pkl(file_path)
             
         import json
         file_path = os.path.join(self.dir_data_converted, 'labels_map.json')
         with open(file_path, 'r') as fp:
             self.labels_map = json.load(fp)
-
+    
     #
     # not required for this task
     def split_train_and_test(self, ratio_train = 0.8, shuffle = False):
@@ -392,7 +271,7 @@ class Dataset():
         return train_data, test_data
         
     #
-    # interface functions
+    # batching
     @staticmethod
     def do_batching_data(data, batch_size):
         """ data: (texts, labels)
@@ -454,7 +333,7 @@ class Dataset():
             returning: x_std, num_sent
             shape: (DS', T'), (D,)
         """        
-        max_num_sent = 10
+        max_num_sent = 30
         min_seq_len = 5
         max_seq_len = 100
         if settings is not None:
@@ -509,7 +388,7 @@ if __name__ == '__main__':
     dataset.vocab_filter_cnt = 5
     dataset.emb_dim = 64
   
-    dataset.prepare_processed_data(load_vocab = False)
+    dataset.prepare_preprocessed_data(load_vocab = False)
     
     print('prepared')
     
@@ -530,7 +409,7 @@ if __name__ == '__main__':
     
     # load
     dataset = Dataset()
-    dataset.load_processed_data()
+    dataset.load_preprocessed_data()
     
     print('loaded')
 

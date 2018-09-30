@@ -31,7 +31,7 @@ def build_graph(config):
 
     with tf.name_scope("rnn"):
         
-        seq_e = rnn_layer(seq_emb, seq_len, 128, config.keep_prob,
+        seq_e = rnn_layer(seq_emb, seq_len, config.hidden_units, config.keep_prob,
                           activation = tf.nn.relu, concat = True, scope = 'bi-lstm-1')        
         feat_s = seq_e[:,-1,:]
         
@@ -39,7 +39,7 @@ def build_graph(config):
         feat_g, mask_s = gather_and_pad_layer(feat_s, input_n)
         
         #
-        seq_e = rnn_layer(feat_g, input_n, 128, config.keep_prob,
+        seq_e = rnn_layer(feat_g, input_n, config.hidden_units, config.keep_prob,
                           activation = tf.nn.relu, concat = True, scope = 'bi-lstm-2')        
         feat = seq_e[:,-1,:]
         
@@ -47,7 +47,7 @@ def build_graph(config):
     with tf.name_scope("score"):
         #
         fc = tf.contrib.layers.dropout(feat, config.keep_prob)
-        fc = tf.layers.dense(fc, 128, name='fc1')            
+        fc = tf.layers.dense(fc, config.hidden_units, name='fc1')            
         fc = tf.nn.relu(fc)
         
         fc = tf.contrib.layers.dropout(fc, config.keep_prob)
